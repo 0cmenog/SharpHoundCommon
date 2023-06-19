@@ -13,6 +13,8 @@ namespace SharpHoundCommonLib.OutputTypes
         public TypedPrincipal[] PSRemoteUsers { get; set; } = Array.Empty<TypedPrincipal>();
         public bool BlockInheritance;
         public TypedPrincipal[] AffectedComputers { get; set; } = Array.Empty<TypedPrincipal>();
+        ////////////
+        public List<Dictionary<string, string>> passwords;
     }
 
     public class GPOChanges

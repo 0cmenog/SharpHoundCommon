@@ -1,11 +1,23 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# 
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpHoundCommonLib", "src\CommonLib\SharpHoundCommonLib.csproj", "{88EB8B09-EB8A-4E59-BBF7-CA5374DFA9EB}"
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33723.286
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpHoundCommonLib", "src\CommonLib\SharpHoundCommonLib.csproj", "{88EB8B09-EB8A-4E59-BBF7-CA5374DFA9EB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonLibTest", "test\unit\CommonLibTest.csproj", "{F1E060CB-58D0-42A7-9BBC-E08C6FD5DD43}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CommonLibTest", "test\unit\CommonLibTest.csproj", "{F1E060CB-58D0-42A7-9BBC-E08C6FD5DD43}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Docfx", "docfx\Docfx.csproj", "{BD8C7EB8-F357-4499-8C08-76B42F600076}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Docfx", "docfx\Docfx.csproj", "{BD8C7EB8-F357-4499-8C08-76B42F600076}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NewFolder1", "NewFolder1", "{06ABFF15-6FC1-4072-8EC7-51FEC2027C67}"
+	ProjectSection(SolutionItems) = preProject
+		..\SharpHound\Sharphound.sln = ..\SharpHound\Sharphound.sln
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sharphound", "..\SharpHound\Sharphound.csproj", "{86F2ED7C-4006-4CCB-A599-1828A3D04016}"
+	ProjectSection(ProjectDependencies) = postProject
+		{88EB8B09-EB8A-4E59-BBF7-CA5374DFA9EB} = {88EB8B09-EB8A-4E59-BBF7-CA5374DFA9EB}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,5 +37,15 @@ Global
 		{BD8C7EB8-F357-4499-8C08-76B42F600076}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BD8C7EB8-F357-4499-8C08-76B42F600076}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BD8C7EB8-F357-4499-8C08-76B42F600076}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86F2ED7C-4006-4CCB-A599-1828A3D04016}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86F2ED7C-4006-4CCB-A599-1828A3D04016}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86F2ED7C-4006-4CCB-A599-1828A3D04016}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86F2ED7C-4006-4CCB-A599-1828A3D04016}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C5180649-D631-431E-8EAA-B091250F5482}
 	EndGlobalSection
 EndGlobal
