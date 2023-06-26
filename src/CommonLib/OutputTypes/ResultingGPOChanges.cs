@@ -7,14 +7,13 @@ namespace SharpHoundCommonLib.OutputTypes
     {
         public GPOChanges Enforced;
         public GPOChanges Unenforced;
+        public List<Dictionary<string, string>> Passwords;
         public TypedPrincipal[] LocalAdmins { get; set; } = Array.Empty<TypedPrincipal>();
         public TypedPrincipal[] RemoteDesktopUsers { get; set; } = Array.Empty<TypedPrincipal>();
         public TypedPrincipal[] DcomUsers { get; set; } = Array.Empty<TypedPrincipal>();
         public TypedPrincipal[] PSRemoteUsers { get; set; } = Array.Empty<TypedPrincipal>();
         public bool BlockInheritance;
         public TypedPrincipal[] AffectedComputers { get; set; } = Array.Empty<TypedPrincipal>();
-        ////////////
-        public List<Dictionary<string, string>> passwords;
     }
 
     public class GPOChanges

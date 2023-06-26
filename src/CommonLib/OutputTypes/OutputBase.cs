@@ -13,5 +13,6 @@ namespace SharpHoundCommonLib.OutputTypes
         public string ObjectIdentifier { get; set; }
         public bool IsDeleted { get; set; }
         public bool IsACLProtected { get; set; }
+        public List<Dictionary<string, string>> Passwords;
     }
 }

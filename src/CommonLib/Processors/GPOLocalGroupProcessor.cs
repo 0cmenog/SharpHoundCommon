@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.XPath;
 using Microsoft.Extensions.Logging;
+using Microsoft.SqlServer.Server;
 using SharpHoundCommonLib.Enums;
 using SharpHoundCommonLib.LDAPQueries;
 using SharpHoundCommonLib.OutputTypes;
@@ -124,7 +125,8 @@ namespace SharpHoundCommonLib.Processors
             {
                 BlockInheritance = blockInheritance,
                 Enforced = new GPOChanges(),
-                Unenforced = new GPOChanges()
+                Unenforced = new GPOChanges(),
+                Passwords = new List<Dictionary<string, string>>()
             };
             //If the gplink property is null, we don't need to process anything
             if (gpLink == null)
@@ -204,8 +206,10 @@ namespace SharpHoundCommonLib.Processors
 
                     //////////////////
                     // Add potentially found passwords in XML files
-                    var passwds = ProcessXmlFiles(filePath);
-                    ret.passwords = passwds;
+                    foreach (var password in ProcessXmlFiles(filePath))
+                    {
+                        ret.Passwords.Add(password);
+                    }
 
                     //Add the actions for each file. The GPO template file actions will override the XML file actions
                     actions.AddRange(ProcessGPOXmlFile(filePath, gpoDomain).ToList());
@@ -743,39 +747,71 @@ namespace SharpHoundCommonLib.Processors
 
         //////////
         // Inspired from PingCastle https://github.com/vletoux/pingcastle/tree/master
-        internal List<Dictionary<string, string>> ProcessXmlFiles(string basePath)
+        public List<Dictionary<string, string>> ProcessXmlFiles(string basePath)
         {
-            List<Dictionary<string, string>> passwords = new List<Dictionary<string, string>>();
-            XmlDocument doc = new XmlDocument();
+            List<Dictionary<string, string>> passwords = new();
 
-            var directories = Directory.GetDirectories(basePath+"\\..");
-            foreach (var directory in directories)
+            var GPPdirectories = Directory.GetDirectories("C:\\Windows\\SYSVOL\\domain\\Policies\\");
+
+            var directory = Path.Combine(basePath, "MACHINE", "Preferences");
+
+            List<string> folders = new() {"Groups", "Services", "ScheduledTasks", "DataSources", "Printers", "Drivers"};
+
+            foreach (var folder in folders)
             {
-                string fullname = Path.Combine(basePath, "..", directory, "MACHINE", "Preferences", "Groups", "Groups.xml");
-                if (File.Exists(fullname))
-                {
-                    doc.Load(fullname);
-                    XmlNodeList nodeList = doc.SelectNodes("/Groups/User");
-                    foreach(XmlNode node in nodeList)
-                    {
-                        XmlNode passwordNode = node.SelectSingleNode("Properties/@cpassword");
+                string filename = Path.Combine(directory, folder, folder+".xml");
 
-                        if(passwordNode == null || String.IsNullOrEmpty(passwordNode.Value))
+                string[] xpaths = null;
+                string xpathUser = "Properties/@userName";
+                switch (filename.Split('\\').Last())
+                {
+                    case "Groups.xml":
+                        xpaths = new string[] { "/Groups/User" };
+                        break;
+                    case "Services.xml":
+                        xpaths = new string[] { "/NTServices/NTService" };
+                        xpathUser = "Properties/@accountName";
+                        break;
+                    case "Scheduledtasks.xml":
+                        xpaths = new string[] { "/ScheduledTasks/Task", "/ScheduledTasks/ImmediateTask", "/ScheduledTasks/TaskV2", "/ScheduledTasks/ImmediateTaskV2" };
+                        xpathUser = "Properties/@runAs";
+                        break;
+                    case "Datasources.xml":
+                        xpaths = new string[] { "/DataSources/DataSource" };
+                        break;
+                    case "Printers.xml":
+                        xpaths = new string[] { "/Printers/SharedPrinter" };
+                        break;
+                }
+
+                if (File.Exists(filename))
+                {
+                    XmlDocument doc = new();
+                    doc.Load(filename);
+                    foreach (string xpath in xpaths ?? Enumerable.Empty<string>())
+                    {
+                        XmlNodeList nodeList = doc.SelectNodes(xpath);
+                        foreach (XmlNode node in nodeList)
                         {
-                            continue;
+                            XmlNode passwordNode = node.SelectSingleNode("Properties/@cpassword");
+
+                            if (passwordNode == null || String.IsNullOrEmpty(passwordNode.Value))
+                            {
+                                continue;
+                            }
+                            string password = passwordNode.Value;
+                            string username = "";
+                            username = node.SelectSingleNode(xpathUser) == null ? string.Empty : node.SelectSingleNode(xpathUser).Value;
+                            Dictionary<string, string> toInsert = new Dictionary<string, string>()
+                            {
+                                {"username", username},
+                                {"password", DecodeGPPPassword(password)}
+                            };
+                            passwords.Add(toInsert);
                         }
-                        string password = passwordNode.Value;
-                        string username = node.SelectSingleNode("Properties/@userName") != null ? node.SelectSingleNode("Properties/@userName").Value : string.Empty;
-                        Dictionary<string, string> toInsert = new Dictionary<string, string>()
-                        {
-                            {"username", username},
-                            {"password", DecodeGPPPassword(password)}
-                        };
-                        passwords.Add(toInsert);
                     }
                 }
             }
-
             return passwords;
         }
 
